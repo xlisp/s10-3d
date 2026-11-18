@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-三星 Galaxy S10 (韩版 SM-G973N) 后盖 3D 打印模型生成器
+三星 Galaxy S10 (SM-G973N) 后盖 3D 打印模型生成器
 依赖: numpy, manifold3d   (已装在 ./.venv)
 
 坐标系 (从手机背面看, 正对后盖外表面):
@@ -11,10 +11,10 @@
     .venv/bin/python s10_back_cover.py                 # 生成完整后盖
     .venv/bin/python s10_back_cover.py --test          # 只打印顶部 50mm, 用来试摄像头孔位
     .venv/bin/python s10_back_cover.py --curve 0       # 平板, 打印不需要支撑
-    .venv/bin/python s10_back_cover.py --thickness 1.0 --camera-x -7 --camera-top 12
+    .venv/bin/python s10_back_cover.py --cam-top 24 --cam-x 0.5
 
-!! 注意: 摄像头/闪光灯孔位和后盖外形尺寸是按公开资料估算的默认值,
-   请用游标卡尺量你自己的手机, 然后改下面的参数, 或用 --test 先打一小块试配.
+摄像头窗口: S10 是一个长条窗口, 三颗镜头 + 闪光灯 + 心率传感器都在里面.
+默认值是根据实物照片量的 (误差约 ±1mm), 请先用 --test 试配.
 """
 import argparse
 import struct
@@ -26,7 +26,7 @@ from manifold3d import CrossSection, JoinType, Manifold
 # ----------------------------------------------------------------------------
 # 参数 (单位 mm)
 # ----------------------------------------------------------------------------
-# 整机: 149.9 x 70.4 x 7.8 (SM-G973N 与国际版外形一致)
+# 整机: 149.9 x 70.4 x 7.8
 COVER_W = 69.8        # 后盖宽度  (机身 70.4, 留 ~0.3mm 单边间隙; 请按实测调整)
 COVER_L = 149.3       # 后盖长度  (机身 149.9)
 CORNER_R = 9.5        # 四角圆角半径
@@ -34,15 +34,14 @@ THICKNESS = 1.2       # 后盖壁厚 (<=1.5 比较不影响无线充电)
 CURVE = 1.2           # 长边两侧向正面弯起的高度, 0 = 平板
 CURVE_ZONE = 6.0      # 弯曲区宽度 (从长边向内多少 mm 开始弯)
 
-# 主摄像头长条孔 (从背面看)
-CAM_W, CAM_H, CAM_R = 34.5, 10.5, 4.0   # 宽, 高, 圆角
-CAM_X = -7.5                            # 孔中心 X (相对后盖中心, 右为正)
-CAM_TOP = 12.5                          # 孔中心距后盖顶边的距离
+# 摄像头长条窗口 (从背面看). 照片里银色镜头圈外沿约 45.4 x 12.7 mm,
+# 孔比镜头圈小约 1.2mm/边, 留出镜头圈的粘贴边.
+CAM_W, CAM_H, CAM_R = 43.0, 11.0, 5.0   # 宽, 高, 圆角
+CAM_X = 0.0                             # 窗口中心 X (相对后盖中心, 右为正) -- 基本居中
+CAM_TOP = 24.3                          # 窗口中心距后盖顶边的距离
 
-# 闪光灯 + 心率传感器孔 (摄像头右侧)
-FLASH_W, FLASH_H, FLASH_R = 5.5, 14.0, 2.7
-FLASH_X = 14.5
-FLASH_TOP = 12.5
+# 参考: 银色镜头圈外沿尺寸 (只用于预览图)
+RING_W, RING_H = 45.4, 12.7
 
 TEST_LENGTH = 50.0    # --test 时保留的顶部长度
 
@@ -86,17 +85,11 @@ def build_cover(args):
     cover = plate ^ outline  # 交集
 
     top_y = L / 2
-    # 摄像头孔
     cam = prism(
-        rounded_rect(CAM_W, CAM_H, CAM_R, 64), -5, 20,
-        x=args.camera_x, y=top_y - args.camera_top,
+        rounded_rect(args.cam_w, args.cam_h, args.cam_r, 64), -5, 20,
+        x=args.cam_x, y=top_y - args.cam_top,
     )
-    # 闪光灯 + 心率孔
-    flash = prism(
-        rounded_rect(FLASH_W, FLASH_H, FLASH_R, 48), -5, 20,
-        x=args.flash_x, y=top_y - FLASH_TOP,
-    )
-    cover = cover - cam - flash
+    cover = cover - cam
 
     if args.test:
         cut = prism(
@@ -126,23 +119,25 @@ def write_binary_stl(manifold, path):
 
 
 def write_preview_svg(args, path):
-    """背面视角的 2D 示意图, 方便对着手机核对孔位."""
+    """背面视角的 2D 示意图 (灰色虚线 = 银色镜头圈外沿), 方便对着手机核对孔位."""
     W, L, s = args.width, args.length, 6  # s: px / mm
     pad = 10
 
     def sx(x): return (x + W / 2) * s + pad
     def sy(y): return (L / 2 - y) * s + pad
 
-    def rrect(cx, cy, w, h, r, fill, stroke="#222"):
+    def rrect(cx, cy, w, h, r, fill, stroke="#222", dash=""):
+        d = f' stroke-dasharray="{dash}"' if dash else ""
         return (f'<rect x="{sx(cx - w / 2):.1f}" y="{sy(cy + h / 2):.1f}" width="{w * s:.1f}" '
-                f'height="{h * s:.1f}" rx="{r * s:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>')
+                f'height="{h * s:.1f}" rx="{r * s:.1f}" fill="{fill}" stroke="{stroke}" '
+                f'stroke-width="1.5"{d}/>')
 
-    top = L / 2
+    cy = L / 2 - args.cam_top
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{W * s + 2 * pad:.0f}" height="{L * s + 2 * pad:.0f}">',
         rrect(0, 0, W, L, args.corner, "#d8dee9"),
-        rrect(args.camera_x, top - args.camera_top, CAM_W, CAM_H, CAM_R, "#fff"),
-        rrect(args.flash_x, top - FLASH_TOP, FLASH_W, FLASH_H, FLASH_R, "#fff"),
+        rrect(args.cam_x, cy, RING_W, RING_H, RING_H / 2 - 0.5, "none", "#888", "5,4"),
+        rrect(args.cam_x, cy, args.cam_w, args.cam_h, args.cam_r, "#fff"),
         f'<text x="{pad + 6}" y="{pad + 18}" font-size="14" fill="#333">S10 back (viewed from rear) '
         f'{W}x{L}mm</text>',
         "</svg>",
@@ -157,9 +152,11 @@ def main():
     ap.add_argument("--corner", type=float, default=CORNER_R)
     ap.add_argument("--thickness", type=float, default=THICKNESS)
     ap.add_argument("--curve", type=float, default=CURVE, help="长边弯起高度, 0=平板")
-    ap.add_argument("--camera-x", type=float, default=CAM_X)
-    ap.add_argument("--camera-top", type=float, default=CAM_TOP)
-    ap.add_argument("--flash-x", type=float, default=FLASH_X)
+    ap.add_argument("--cam-w", type=float, default=CAM_W)
+    ap.add_argument("--cam-h", type=float, default=CAM_H)
+    ap.add_argument("--cam-r", type=float, default=CAM_R)
+    ap.add_argument("--cam-x", type=float, default=CAM_X)
+    ap.add_argument("--cam-top", type=float, default=CAM_TOP, help="窗口中心距顶边")
     ap.add_argument("--test", action="store_true", help="只生成顶部 50mm 试配件")
     ap.add_argument("--out", default=None, help="输出 STL 路径")
     args = ap.parse_args()
