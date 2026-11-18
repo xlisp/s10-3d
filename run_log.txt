@@ -1,0 +1,27 @@
+
+~/PyPro/s10-3d main
+torch ❯ pip install manifold3d
+
+Collecting manifold3d
+
+  Downloading manifold3d-3.5.5-cp311-cp311-macosx_10_14_x86_64.whl.metadata (20 kB)
+Requirement already satisfied: numpy in /opt/anaconda3/envs/torch/lib/python3.11/site-packages (from manifold3d) (1.26.4)
+Downloading manifold3d-3.5.5-cp311-cp311-macosx_10_14_x86_64.whl (1.0 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.0/1.0 MB 141.1 kB/s  0:00:07
+Installing collected packages: manifold3d
+Successfully installed manifold3d-3.5.5
+
+~/PyPro/s10-3d main 24s
+torch ❯
+
+---
+~/PyPro/s10-3d main
+torch ❯ python s10_mold.py
+STL: /Users/xlisp/PyPro/s10-3d/output/s10_mold.stl
+模盒尺寸: X 77.8  Y 157.3  Z 9.7 mm   三角面 1716   约 75 g PLA
+液面高度(距模盒底): 5.70 mm   侧壁高: 9.70 mm
+所需环氧: 约 15.5 mL ≈ 17.1 g (A+B 总量, 建议多配 15%: 20 g)
+后盖预期: 中间厚 1.50 mm, 长边处厚 2.70 mm (树脂 Z 范围 3.04 ~ 5.70)
+~/PyPro/s10-3d main*
+
+
